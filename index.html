@@ -93,13 +93,15 @@ footer{color:var(--muted);font-size:12px;border-top:1px solid var(--line);paddin
 .day-h{margin:12px 0 6px;font-size:14px}
 @media (min-width:1000px){
   .band .in{padding-block:8px 6px} .band h1{font-size:18px} .band p{font-size:12px}
-  .wrap{max-width:1240px;display:grid;grid-template-columns:380px 1fr;align-items:start;gap:24px;padding-top:12px}
-  .info{position:sticky;top:8px;gap:8px}
+  /* 左：まとめ・表、右上：残高のグラフ、右下：買った馬券（2026-10-23 ユーザー） */
+  .wrap{max-width:1240px;display:grid;grid-template-columns:380px 1fr;grid-template-areas:"info graph" "info bought";grid-template-rows:auto 1fr;align-items:start;gap:16px 24px;padding-top:12px}
+  .info{grid-area:info;position:sticky;top:8px;gap:8px}
+  .graph{grid-area:graph} .bought{grid-area:bought}
+  .graph h2,.bought h2{font-size:14px;margin-bottom:4px}
   .info h2{font-size:14px;margin-bottom:4px}
   .summary{gap:6px} .sum{padding:6px 10px} .sum .k,.sum .s{font-size:11px} .sum .v{font-size:20px}
   .box{padding:6px 12px}
-  #chart svg{max-height:90px}
-  .wrap{padding-bottom:16px}
+    .wrap{padding-bottom:16px}
   .tbl th,.tbl td{padding:4px 4px;font-size:13px}
   .list{max-height:120px} .list.short{max-height:70px}
   .note{margin-top:2px}
@@ -118,11 +120,6 @@ footer{color:var(--muted);font-size:12px;border-top:1px solid var(--line);paddin
     <section class="summary" id="summary"></section>
 
     <section>
-      <h2>残高の推移</h2>
-      <div class="box"><div id="chart"></div><p class="note">その日の終わりの残高（入金・出金を含む）</p></div>
-    </section>
-
-    <section>
       <h2>日ごとの収支</h2>
       <div class="box list"><table class="tbl" id="days"><thead><tr><th>日付</th><th>レース</th><th>購入</th><th>払戻</th><th>損益</th><th>回収率</th></tr></thead><tbody></tbody></table></div>
     </section>
@@ -133,6 +130,11 @@ footer{color:var(--muted);font-size:12px;border-top:1px solid var(--line);paddin
     </section>
 
   </div>
+
+  <section class="graph">
+    <h2>残高の推移</h2>
+    <div class="box"><div id="chart"></div><p class="note">その日の終わりの残高（入金・出金を含む）</p></div>
+  </section>
 
   <section class="bought">
     <h2>買った馬券</h2>
@@ -194,7 +196,8 @@ function chart(d) {
   const box = document.getElementById('chart'); box.textContent = '';
   const pts = d.curve;
   if (pts.length < 2) { box.append(el('p', {class: 'empty'}, '1日分の記録がたまると、ここに線が出ます。')); return; }
-  const W = 640, H = 200, L = 56, R = 16, T = 16, B = 26;
+  const W = Math.max(300, box.clientWidth || 640), H = W > 600 ? 170 : 180,   // 枠の幅に合わせて描く（文字の大きさをそろえる）
+        L = 56, R = 16, T = 16, B = 26;
   const vals = pts.map((p) => p.balance), lo = Math.min(...vals), hi = Math.max(...vals), pad = Math.max(1000, (hi - lo) * .15);
   const y0 = Math.max(0, Math.floor((lo - pad) / 1000) * 1000), y1 = Math.ceil((hi + pad) / 1000) * 1000;
   const x = (i) => L + (W - L - R) * (i / (pts.length - 1));
@@ -226,6 +229,7 @@ fetch('data.json', {cache: 'no-store'}).then((r) => r.json()).then((d) => {
   document.getElementById('since').textContent = `${+d.since.slice(4, 6)}月${+d.since.slice(6, 8)}日`;
   document.getElementById('updated').textContent = d.updated ? `・${+d.updated.slice(5, 7)}/${+d.updated.slice(8, 10)} ${d.updated.slice(11)} 更新` : '';
   summary(d); races(d); days(d); chart(d); cash(d);
+  let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => chart(d), 200); });
 }).catch(() => { document.getElementById('races').textContent = '記録を読み込めませんでした。少し待ってから開き直してください。'; });
 </script>
 </body>
