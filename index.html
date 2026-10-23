@@ -20,7 +20,7 @@
   --win:#ff7366; --lose:#6aa8ff; --hit-bg:#33211d; --seal:#ff5a4c; color-scheme:dark}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 var(--sans)}
-.band{background:var(--brown);color:#fff;border-bottom:4px solid var(--brown-dark)}
+.band{background:var(--brown);color:#fff;border-bottom:3px solid var(--brown-dark)}
 .band .in{max-width:1240px;margin:0 auto;padding-block:16px 14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .band h1{margin:0;font-size:22px;letter-spacing:.04em}
 .band p{margin:2px 0 0;font-size:13px;opacity:.85}
@@ -98,11 +98,15 @@ footer{color:var(--muted);font-size:12px;border-top:1px solid var(--line);paddin
 .days tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--brown)}
 .hint{font-size:11px;color:var(--muted);font-weight:400;margin-left:8px}
 @media (min-width:1000px){
-  /* 上の帯：左に題名、右（空いていた所）に残高・損益のまとめ（2026-10-23 ユーザー「上の余白右側うまいこと使って」） */
-  .band .in{max-width:1240px;padding-block:8px;display:flex;align-items:center;gap:24px}
-  .band h1{font-size:18px} .band p{font-size:12px}
-  .band .summary{margin:0 0 0 auto;grid-template-columns:repeat(4,minmax(150px,auto));gap:6px}
-  .sum{padding:5px 12px} .sum .k,.sum .s{font-size:11px} .sum .v{font-size:20px;line-height:1.25}
+  /* 上の帯は1行の細い帯にして縦を減らす。まとめは帯の右に1行で（2026-10-23 ユーザー「うえのたてへらして」） */
+  .band .in{max-width:1240px;padding-block:6px;display:flex;align-items:center;gap:20px}
+  .band .in>div{display:flex;align-items:baseline;gap:12px;white-space:nowrap}
+  .band h1{font-size:17px} .band p{font-size:12px;margin:0}
+  .band .summary{margin:0 0 0 auto;display:flex;gap:6px;color:#fff}
+  .band .sum{background:rgba(255,255,255,.12);border:0;border-radius:6px;padding:2px 10px;display:flex;align-items:baseline;gap:6px}
+  .band .sum .k{font-size:11px;color:#f3dccb} .band .sum .s{display:none}
+  .band .sum .v{font-size:16px;line-height:1.5;color:#fff}
+  .band .sum .v.win{color:#ffb4a8} .band .sum .v.lose{color:#b9d4ff}
   /* 左：日ごとの収支・入金出金、右：グラフ（空いた高さを全部使う）と、えらんだ日の馬券 */
   .wrap{max-width:1240px;display:grid;grid-template-columns:380px 1fr;align-items:start;gap:16px 24px;padding-top:12px;padding-bottom:16px}
   .info{gap:8px} .right{display:flex;flex-direction:column;gap:12px;min-width:0}
