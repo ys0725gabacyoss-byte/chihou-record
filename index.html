@@ -21,7 +21,7 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 var(--sans)}
 .band{background:var(--brown);color:#fff;border-bottom:4px solid var(--brown-dark)}
-.band .in{max-width:760px;margin:0 auto;padding-block:16px 14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.band .in{max-width:1240px;margin:0 auto;padding-block:16px 14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .band h1{margin:0;font-size:22px;letter-spacing:.04em}
 .band p{margin:2px 0 0;font-size:13px;opacity:.85}
 .wrap{max-width:760px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:28px}
@@ -61,7 +61,21 @@ h2{margin:0 0 10px;font-size:17px;padding-left:10px;border-left:4px solid var(--
 .wait{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 10px}
 
 .box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
-.scroll{overflow-x:auto}
+/* 買った馬券以外は1画面に収める（2026-10-23 ユーザー）：表は横にはみ出さず、長くなったら枠の中だけ縦にスクロール */
+.info{display:flex;flex-direction:column;gap:16px;min-width:0}
+.info h2{margin-bottom:6px}
+.list{overflow-y:auto;max-height:190px;padding-block:4px}
+.list.short{max-height:110px}
+.list thead th{position:sticky;top:0;background:var(--card)}
+@media (max-width:480px){
+  .tbl th,.tbl td{padding:5px 3px;font-size:13px}
+  .sum{padding:8px 10px} .sum .v{font-size:21px}
+  .summary{gap:8px}
+}
+@media (min-width:1000px){
+  .wrap{max-width:1240px;display:grid;grid-template-columns:400px 1fr;align-items:start;gap:28px}
+  .info{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow-y:auto}
+}
 .tbl{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
 .tbl th,.tbl td{padding:8px 6px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
 .tbl tr:last-child td{border-bottom:0}
@@ -80,29 +94,31 @@ footer{color:var(--muted);font-size:12px;border-top:1px solid var(--line);paddin
 </div></header>
 
 <div class="wrap">
-  <section class="summary" id="summary"></section>
+  <div class="info">
+    <section class="summary" id="summary"></section>
 
-  <section>
+    <section>
+      <h2>残高の推移</h2>
+      <div class="box"><div id="chart"></div><p class="note">その日の終わりの残高（入金・出金を含む）</p></div>
+    </section>
+
+    <section>
+      <h2>日ごとの収支</h2>
+      <div class="box list"><table class="tbl" id="days"><thead><tr><th>日付</th><th>レース</th><th>購入</th><th>払戻</th><th>損益</th><th>回収率</th></tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section>
+      <h2>入金・出金</h2>
+      <div class="box list short"><table class="tbl" id="cash"><tbody></tbody></table></div>
+    </section>
+
+    <footer>発走の約3分前に自動で買っています（単勝・複勝・馬連・ワイド・3連複）。オッズは買ったときの値です。過去の成績は、これからの成績を約束するものではありません。</footer>
+  </div>
+
+  <section class="bought">
     <h2>買った馬券</h2>
     <div id="races"></div>
   </section>
-
-  <section>
-    <h2>日ごとの収支</h2>
-    <div class="box scroll"><table class="tbl" id="days"><thead><tr><th>日付</th><th>レース</th><th>購入</th><th>払戻</th><th>損益</th><th>回収率</th></tr></thead><tbody></tbody></table></div>
-  </section>
-
-  <section>
-    <h2>残高の推移</h2>
-    <div class="box"><div id="chart"></div><p class="note">その日の終わりの残高（入金・出金を含む）</p></div>
-  </section>
-
-  <section>
-    <h2>入金・出金</h2>
-    <div class="box"><table class="tbl" id="cash"><tbody></tbody></table></div>
-  </section>
-
-  <footer>発走の約3分前に自動で買っています（単勝・複勝・馬連・ワイド・3連複）。オッズは買ったときの値です。過去の成績は、これからの成績を約束するものではありません。</footer>
 </div>
 
 <script>
