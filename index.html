@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>地方競馬 自動投票の記録</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="description" content="AI の予想で地方競馬を自動で買った、実際の収支と買い目の記録">
+<style>
+/* 1列の帳簿。上に要点、下に日ごと・レースごとの明細 */
+:root{
+  --bg:#f6f4f0; --panel:#ffffff; --fg:#22201c; --muted:#6f6a61; --line:#e2ddd3;
+  --accent:#8a3b12; --plus:#b3261e; --minus:#1f5fa8; --hit:#b8860b; --chip:#efe9df;
+  --sans:"Hiragino Sans","Yu Gothic UI","Meiryo","Noto Sans JP",system-ui,sans-serif;
+  --num:"Segoe UI","Helvetica Neue",Arial,var(--sans);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#1a1916; --panel:#23211d; --fg:#ece8e1; --muted:#a39d92; --line:#38352f;
+  --accent:#e08a5a; --plus:#ff7a6e; --minus:#7fb0f0; --hit:#e3b34a; --chip:#2e2b26; color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.7 var(--sans)}
+.wrap{max-width:960px;margin:0 auto;padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:28px}
+header h1{margin:0;font-size:24px;letter-spacing:.02em;text-wrap:balance}
+header p{margin:4px 0 0;color:var(--muted);font-size:13px}
+h2{margin:0 0 10px;font-size:17px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.tile .k{font-size:12px;color:var(--muted)}
+.tile .v{font:600 24px/1.3 var(--num);font-variant-numeric:tabular-nums;margin-top:2px}
+.tile .s{font-size:12px;color:var(--muted)}
+.plus{color:var(--plus)} .minus{color:var(--minus)}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;min-width:0}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{font-size:12px;color:var(--muted);font-weight:600}
+th:first-child,td:first-child{text-align:left}
+#chart svg{display:block;width:100%;height:auto}
+.race{border-top:1px solid var(--line);padding:12px 0}
+.race:first-child{border-top:0;padding-top:0}
+.rh{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.rh b{font-size:15px}
+.rh .t{color:var(--muted);font-size:12px}
+.chip{display:inline-block;border-radius:999px;padding:0 10px;font-size:12px;font-weight:600;background:var(--chip);color:var(--muted)}
+.chip.hit{background:var(--hit);color:#fff}
+.chip.miss{background:var(--chip);color:var(--muted)}
+.chip.wait{background:transparent;border:1px solid var(--line)}
+.race table{margin-top:6px;font-size:13px}
+.day-h{margin:18px 0 6px;font-size:14px;color:var(--accent);font-weight:700}
+.day-h:first-child{margin-top:0}
+.note{color:var(--muted);font-size:12px}
+.empty{color:var(--muted);font-size:13px;padding:8px 0}
+footer{color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>地方競馬 自動投票の記録</h1>
+    <p>AI の予想で SPAT4 から実際に買った記録です（<span id="since">—</span>から）。<span id="updated"></span></p>
+  </header>
+
+  <section class="tiles" id="tiles"></section>
+
+  <section>
+    <h2>残高の推移</h2>
+    <div class="box"><div id="chart"></div><p class="note" id="balnote"></p></div>
+  </section>
+
+  <section>
+    <h2>日ごとの収支</h2>
+    <div class="box scroll"><table id="days"><thead><tr><th>日付</th><th>レース</th><th>点数</th><th>購入</th><th>払戻</th><th>損益</th><th>回収率</th><th>的中</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section>
+    <h2>レースごとの買い目と結果</h2>
+    <div class="box" id="races"></div>
+  </section>
+
+  <section>
+    <h2>入金・出金</h2>
+    <div class="box scroll"><table id="cash"><thead><tr><th>日時</th><th>種類</th><th>金額</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <footer>買い目は発走の約3分前に自動で決めて送っています。単勝・複勝・馬連・ワイド・3連複を買います。オッズは買ったときの値で、払戻は確定後のものです。過去の成績は、これからの成績を約束するものではありません。</footer>
+</div>
+
+<script>
+const yen = (v) => Math.round(v).toLocaleString('ja-JP') + '円';
+const sgn = (v) => (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(Math.round(v)).toLocaleString('ja-JP') + '円';
+const cls = (v) => v > 0 ? 'plus' : v < 0 ? 'minus' : '';
+const md = (d) => `${+d.slice(4, 6)}/${+d.slice(6, 8)}`;
+const el = (tag, attrs = {}, ...kids) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) { if (k === 'class') e.className = v; else e.setAttribute(k, v); } for (const c of kids) e.append(c); return e; };
+const td = (text, c) => el('td', c ? {class: c} : {}, text);
+
+function tiles(d) {
+  const t = d.total, net = t.payout - t.stake;
+  const roi = t.done_stake ? Math.round(t.payout / t.done_stake * 100) + '%' : '—';
+  const today = d.days.length ? d.days[d.days.length - 1] : null;
+  const items = [
+    ['残高', yen(d.balance.tool), d.balance.spat_at ? `SPAT4 で確かめた残高 ${yen(d.balance.spat)}（${md(d.balance.spat_at.replace(/-/g, '').slice(0, 8))} ${d.balance.spat_at.slice(11, 16)}）` : '', ''],
+    ['累計の損益', sgn(net), `購入 ${yen(t.stake)}・払戻 ${yen(t.payout)}`, cls(net)],
+    ['回収率', roi, `結果の出た買い目で計算`, ''],
+    ['的中', `${t.hits}/${t.races}`, `レース（${t.points}点）`, ''],
+  ];
+  if (today) { const n = today.payout - today.stake; items.splice(1, 0, [`${md(today.date)} の損益`, sgn(n), `${today.races}レース・${today.points}点` + (today.pending ? `・結果待ち ${today.pending}点` : ''), cls(n)]); }
+  const box = document.getElementById('tiles'); box.textContent = '';
+  for (const [k, v, s, c] of items) box.append(el('div', {class: 'tile'}, el('div', {class: 'k'}, k), el('div', {class: 'v ' + c}, v), el('div', {class: 's'}, s)));
+}
+
+function chart(d) {
+  const box = document.getElementById('chart'); box.textContent = '';
+  const pts = d.curve;
+  document.getElementById('balnote').textContent = '日の終わりの残高（入金・出金も含む）。左端は記録の始まる前の残高です。';
+  if (pts.length < 2) { box.append(el('p', {class: 'empty'}, 'まだ1日分の記録がありません。')); return; }
+  const W = 640, H = 220, L = 64, R = 16, T = 12, B = 28;
+  const vals = pts.map((p) => p.balance), lo = Math.min(...vals), hi = Math.max(...vals), pad = Math.max(1000, (hi - lo) * 0.1);
+  const y0 = Math.floor((lo - pad) / 1000) * 1000, y1 = Math.ceil((hi + pad) / 1000) * 1000;
+  const x = (i) => L + (W - L - R) * (pts.length === 1 ? 0.5 : i / (pts.length - 1));
+  const y = (v) => T + (H - T - B) * (1 - (v - y0) / (y1 - y0));
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', '残高の推移');
+  const add = (tag, a) => { const e = document.createElementNS(ns, tag); for (const k in a) e.setAttribute(k, a[k]); svg.append(e); return e; };
+  const step = Math.max(1000, Math.ceil((y1 - y0) / 4 / 1000) * 1000);
+  for (let v = y0; v <= y1; v += step) {
+    add('line', {x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: 'var(--line)'});
+    add('text', {x: L - 6, y: y(v) + 4, 'text-anchor': 'end', 'font-size': 11, fill: 'var(--muted)'}).textContent = (v / 10000).toLocaleString('ja-JP', {maximumFractionDigits: 1}) + '万';
+  }
+  const every = Math.ceil(pts.length / 8);
+  pts.forEach((p, i) => { if (i % every === 0 || i === pts.length - 1) add('text', {x: x(i), y: H - 8, 'text-anchor': 'middle', 'font-size': 11, fill: 'var(--muted)'}).textContent = p.date === 'start' ? '開始' : md(p.date); });
+  add('path', {d: pts.map((p, i) => `${i ? 'L' : 'M'}${x(i)},${y(p.balance)}`).join(''), fill: 'none', stroke: 'var(--accent)', 'stroke-width': 2.5, 'stroke-linejoin': 'round', 'stroke-linecap': 'round'});
+  pts.forEach((p, i) => { const c = add('circle', {cx: x(i), cy: y(p.balance), r: 3.5, fill: 'var(--accent)'}); const t = document.createElementNS(ns, 'title'); t.textContent = `${p.date === 'start' ? '開始' : md(p.date)}　${yen(p.balance)}`; c.append(t); });
+  const last = pts[pts.length - 1];
+  add('text', {x: Math.min(x(pts.length - 1), W - R), y: y(last.balance) - 8, 'text-anchor': 'end', 'font-size': 12, 'font-weight': 600, fill: 'var(--fg)'}).textContent = yen(last.balance);
+  box.append(svg);
+}
+
+function days(d) {
+  const tb = document.querySelector('#days tbody'); tb.textContent = '';
+  if (!d.days.length) { tb.append(el('tr', {}, el('td', {colspan: 8, class: 'empty'}, 'まだ買った日がありません。'))); return; }
+  for (const x of [...d.days].reverse()) {
+    const n = x.payout - x.stake;
+    tb.append(el('tr', {}, td(md(x.date)), td(String(x.races)), td(String(x.points)), td(yen(x.stake)), td(yen(x.payout)), td(sgn(n), cls(n)),
+      td(x.done_stake ? Math.round(x.payout / x.done_stake * 100) + '%' : '—'), td(`${x.hits}レース`)));
+  }
+}
+
+function races(d) {
+  const box = document.getElementById('races'); box.textContent = '';
+  if (!d.races.length) { box.append(el('p', {class: 'empty'}, 'まだ買ったレースがありません。発走の約3分前に買い目が決まると、ここに出ます。')); return; }
+  let day = null;
+  for (const r of d.races) {
+    if (r.date !== day) { day = r.date; box.append(el('div', {class: 'day-h'}, `${+day.slice(4, 6)}月${+day.slice(6, 8)}日`)); }
+    const n = r.payout - r.stake;
+    const chip = r.pending ? el('span', {class: 'chip wait'}, '結果待ち') : r.payout > 0 ? el('span', {class: 'chip hit'}, `的中 ${sgn(n)}`) : el('span', {class: 'chip miss'}, `外れ ${sgn(n)}`);
+    const t = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, '券種'), el('th', {}, '馬番'), el('th', {}, '金額'), el('th', {}, '買った時のオッズ'), el('th', {}, '着順'), el('th', {}, '払戻'))));
+    const tb = el('tbody');
+    for (const b of r.bets) tb.append(el('tr', {}, td(b.kind), td(b.nums), td(yen(b.stake)), td(b.odds != null ? b.odds + '倍' : '—'), td(b.done ? (b.finish || '—') : '待'), td(b.done ? (b.payout ? yen(b.payout) : '0円') : '—', b.payout ? 'plus' : '')));
+    t.append(tb);
+    box.append(el('div', {class: 'race'}, el('div', {class: 'rh'}, el('b', {}, `${r.venue} ${r.num}R`), el('span', {}, r.name), el('span', {class: 't'}, `${r.ts} に購入`), chip), el('div', {class: 'scroll'}, t)));
+  }
+}
+
+function cash(d) {
+  const tb = document.querySelector('#cash tbody'); tb.textContent = '';
+  if (!d.cash.length) { tb.append(el('tr', {}, el('td', {colspan: 3, class: 'empty'}, '記録の期間中の入金・出金はありません。'))); return; }
+  for (const c of [...d.cash].reverse()) tb.append(el('tr', {}, td(`${md(c.ts.replace(/-/g, '').slice(0, 8))} ${c.ts.slice(11, 16)}`), td(c.kind === 'deposit' ? '入金' : '出金'), td(yen(c.amount))));
+}
+
+fetch('data.json', {cache: 'no-store'}).then((r) => r.json()).then((d) => {
+  document.getElementById('since').textContent = `${+d.since.slice(0, 4)}年${+d.since.slice(4, 6)}月${+d.since.slice(6, 8)}日`;
+  document.getElementById('updated').textContent = d.updated ? `最終更新 ${d.updated.slice(5).replace('-', '/')}` : '';
+  tiles(d); chart(d); days(d); races(d); cash(d);
+}).catch(() => { document.getElementById('races').textContent = '記録を読み込めませんでした。少し待ってから開き直してください。'; });
+</script>
+</body>
+</html>
