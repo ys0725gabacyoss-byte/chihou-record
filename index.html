@@ -96,6 +96,16 @@ footer{color:var(--muted);font-size:12px;border-top:1px solid var(--line);paddin
   /* 左：まとめ・表、右上：残高のグラフ、右下：買った馬券（2026-10-23 ユーザー） */
   .wrap{max-width:1240px;display:grid;grid-template-columns:380px 1fr;grid-template-areas:"info graph" "info bought";grid-template-rows:auto 1fr;align-items:start;gap:16px 24px;padding-top:12px}
   .info{grid-area:info;position:sticky;top:8px;gap:8px;max-height:calc(100vh - 90px)}
+}
+/* パソコンでは画面ぴったりに収め、ページはスクロールしない。馬券が増えたら馬券の枠の中だけスクロール（2026-10-23 ユーザー） */
+@media (min-width:1000px) and (min-height:560px){
+  body{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+  .wrap{flex:1 1 auto;min-height:0;width:100%;grid-template-rows:auto minmax(0,1fr)}
+  .info{position:static;max-height:none;align-self:stretch;min-height:0;overflow:hidden}
+  .bought{align-self:stretch;min-height:0;display:flex;flex-direction:column}
+  #races{flex:1 1 auto;min-height:0;overflow-y:auto;padding-right:4px}
+}
+@media (min-width:1000px){
   /* 日ごとの収支は左の空いている高さを全部使い、入りきらない分は枠の中でスクロール */
   .info .days{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
   .info .days .list{max-height:none;flex:1 1 auto;min-height:60px}
@@ -198,7 +208,7 @@ function chart(d) {
   const box = document.getElementById('chart'); box.textContent = '';
   const pts = d.curve;
   if (pts.length < 2) { box.append(el('p', {class: 'empty'}, '1日分の記録がたまると、ここに線が出ます。')); return; }
-  const W = Math.max(300, box.clientWidth || 640), H = W > 600 ? Math.max(240, Math.round(innerHeight * 0.45)) : 220,   // パソコンでは画面の高さの約半分（2026-10-23 ユーザー「できるだけ大きく」）
+  const W = Math.max(300, box.clientWidth || 640), H = W > 600 ? Math.max(200, Math.round((innerHeight - 70) * 0.38)) : 220,   // パソコンでは画面の高さの約半分（2026-10-23 ユーザー「できるだけ大きく」）
           // 枠の幅に合わせて描く（文字の大きさをそろえる）
         L = 56, R = 16, T = 16, B = 26;
   const vals = pts.map((p) => p.balance), lo = Math.min(...vals), hi = Math.max(...vals), pad = Math.max(1000, (hi - lo) * .15);
