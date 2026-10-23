@@ -95,7 +95,10 @@ footer{color:var(--muted);font-size:12px;border-top:1px solid var(--line);paddin
   .band .in{padding-block:8px 6px} .band h1{font-size:18px} .band p{font-size:12px}
   /* 左：まとめ・表、右上：残高のグラフ、右下：買った馬券（2026-10-23 ユーザー） */
   .wrap{max-width:1240px;display:grid;grid-template-columns:380px 1fr;grid-template-areas:"info graph" "info bought";grid-template-rows:auto 1fr;align-items:start;gap:16px 24px;padding-top:12px}
-  .info{grid-area:info;position:sticky;top:8px;gap:8px}
+  .info{grid-area:info;position:sticky;top:8px;gap:8px;max-height:calc(100vh - 90px)}
+  /* 日ごとの収支は左の空いている高さを全部使い、入りきらない分は枠の中でスクロール */
+  .info .days{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+  .info .days .list{max-height:none;flex:1 1 auto;min-height:60px}
   .graph{grid-area:graph} .bought{grid-area:bought}
   .graph h2,.bought h2{font-size:14px;margin-bottom:4px}
   .info h2{font-size:14px;margin-bottom:4px}
@@ -119,7 +122,7 @@ footer{color:var(--muted);font-size:12px;border-top:1px solid var(--line);paddin
   <div class="info">
     <section class="summary" id="summary"></section>
 
-    <section>
+    <section class="days">
       <h2>日ごとの収支</h2>
       <div class="box list"><table class="tbl" id="days"><thead><tr><th>日付</th><th>レース</th><th>購入</th><th>払戻</th><th>損益</th><th>回収率</th></tr></thead><tbody></tbody></table></div>
     </section>
@@ -139,7 +142,6 @@ footer{color:var(--muted);font-size:12px;border-top:1px solid var(--line);paddin
   <section class="bought">
     <h2>買った馬券</h2>
     <div id="races"></div>
-    <footer style="margin-top:16px">発走の約3分前に自動で買っています（単勝・複勝・馬連・ワイド・3連複）。オッズは買ったときの値です。過去の成績は、これからの成績を約束するものではありません。</footer>
   </section>
 </div>
 
