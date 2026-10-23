@@ -61,6 +61,15 @@ h2{margin:0 0 10px;font-size:17px;padding-left:10px;border-left:4px solid var(--
 .wait{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 10px}
 
 .box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.tbl{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+.tbl th,.tbl td{padding:8px 6px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+.tbl tr:last-child td{border-bottom:0}
+.tbl th{font-size:12px;color:var(--muted);font-weight:400}
+.tbl th:first-child,.tbl td:first-child{text-align:left}
+#chart svg{display:block;width:100%;height:auto}
+.empty{color:var(--muted);font-size:14px;margin:4px 0}
+.note{color:var(--muted);font-size:12px;margin:6px 0 0}
+footer{color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 /* 買った馬券以外は1画面に収める（2026-10-23 ユーザー）：表は横にはみ出さず、長くなったら枠の中だけ縦にスクロール */
 .info{display:flex;flex-direction:column;gap:16px;min-width:0}
 .info h2{margin-bottom:6px}
@@ -72,19 +81,30 @@ h2{margin:0 0 10px;font-size:17px;padding-left:10px;border-left:4px solid var(--
   .sum{padding:8px 10px} .sum .v{font-size:21px}
   .summary{gap:8px}
 }
+/* 買った馬券は小さめの券に（2026-10-23 ユーザー「こんな大きく表示しなくていい」） */
+.tickets{grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:8px}
+.ticket{padding:8px 10px 6px}
+.ticket::before{height:4px}
+.t-head .ven{font-size:15px} .t-head .r{font-size:13px}
+.t-name{font-size:11px;margin:0 0 4px;padding-right:80px}
+.t-rows td{padding:2px 0;font-size:13px}
+.t-foot{font-size:12px;padding-top:4px} .t-foot b{font-size:15px}
+.seal{width:36px;height:36px;font-size:11px;right:46px;top:4px;border-width:2px}
+.day-h{margin:12px 0 6px;font-size:14px}
 @media (min-width:1000px){
-  .wrap{max-width:1240px;display:grid;grid-template-columns:400px 1fr;align-items:start;gap:28px}
-  .info{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow-y:auto}
+  .band .in{padding-block:8px 6px} .band h1{font-size:18px} .band p{font-size:12px}
+  .wrap{max-width:1240px;display:grid;grid-template-columns:380px 1fr;align-items:start;gap:24px;padding-top:12px}
+  .info{position:sticky;top:8px;gap:8px}
+  .info h2{font-size:14px;margin-bottom:4px}
+  .summary{gap:6px} .sum{padding:6px 10px} .sum .k,.sum .s{font-size:11px} .sum .v{font-size:20px}
+  .box{padding:6px 12px}
+  #chart svg{max-height:90px}
+  .wrap{padding-bottom:16px}
+  .tbl th,.tbl td{padding:4px 4px;font-size:13px}
+  .list{max-height:120px} .list.short{max-height:70px}
+  .note{margin-top:2px}
+  footer{font-size:11px;padding-top:6px}
 }
-.tbl{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
-.tbl th,.tbl td{padding:8px 6px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
-.tbl tr:last-child td{border-bottom:0}
-.tbl th{font-size:12px;color:var(--muted);font-weight:400}
-.tbl th:first-child,.tbl td:first-child{text-align:left}
-#chart svg{display:block;width:100%;height:auto}
-.empty{color:var(--muted);font-size:14px;margin:4px 0}
-.note{color:var(--muted);font-size:12px;margin:6px 0 0}
-footer{color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 </style>
 </head>
 <body>
@@ -112,12 +132,12 @@ footer{color:var(--muted);font-size:12px;border-top:1px solid var(--line);paddin
       <div class="box list short"><table class="tbl" id="cash"><tbody></tbody></table></div>
     </section>
 
-    <footer>発走の約3分前に自動で買っています（単勝・複勝・馬連・ワイド・3連複）。オッズは買ったときの値です。過去の成績は、これからの成績を約束するものではありません。</footer>
   </div>
 
   <section class="bought">
     <h2>買った馬券</h2>
     <div id="races"></div>
+    <footer style="margin-top:16px">発走の約3分前に自動で買っています（単勝・複勝・馬連・ワイド・3連複）。オッズは買ったときの値です。過去の成績は、これからの成績を約束するものではありません。</footer>
   </section>
 </div>
 
