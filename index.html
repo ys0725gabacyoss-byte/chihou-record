@@ -115,6 +115,8 @@ footer{color:var(--muted);font-size:12px;border-top:1px solid var(--line);paddin
   .tickets{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
 }
 /* パソコンでは画面ぴったりに収め、ページはスクロールしない */
+.chgbox{padding:8px 12px;margin-bottom:10px;font-size:14px}.chgbox summary{cursor:pointer}.chg{margin:6px 0 0;padding-left:1.2em}.chg li{margin:2px 0}
+.chgrow td{background:var(--line);font-weight:700;text-align:left;font-size:13px}
 @media (min-width:1000px) and (min-height:560px){
   body{height:100vh;display:flex;flex-direction:column;overflow:hidden}
   .wrap{flex:1 1 auto;min-height:0;width:100%;grid-template-rows:minmax(0,1fr)}
@@ -137,6 +139,7 @@ footer{color:var(--muted);font-size:12px;border-top:1px solid var(--line);paddin
 <div class="wrap">
   <div class="info">
     <section class="summary" id="summary"></section>
+    <section id="changes" hidden></section>
 
     <section class="days">
       <h2>日ごとの収支</h2>
@@ -180,6 +183,23 @@ function summary(d) {
   box.append(sum(today ? `${md(today.date)}（${wd(today.date)}）の損益` : '今日の損益', today ? sgn(tn) : '—', today ? `${today.races}レース` + (today.pending ? `・結果待ち${today.pending}点` : '') : 'まだ買っていません', cls(tn)));
   box.append(sum('累計の損益', sgn(net), `購入 ${yen(t.stake)}`, cls(net)));
   box.append(sum('回収率', t.done_stake ? Math.round(t.payout / t.done_stake * 100) + '%' : '—', `的中 ${t.hits} / ${t.races}レース`));
+  const c = lastChange(d);
+  if (c) {                                   // いちばん新しい変更の日からの成績（2026-10-28）
+    const z = d.days.filter((x) => x.date >= c), st = z.reduce((s, x) => s + x.stake, 0), py = z.reduce((s, x) => s + x.payout, 0), ds = z.reduce((s, x) => s + x.done_stake, 0);
+    box.append(sum(`${md(c)}〜の損益（変更後）`, z.length ? sgn(py - st) : '—', z.length ? `回収率 ${ds ? Math.round(py / ds * 100) + '%' : '—'}・${z.reduce((s, x) => s + x.races, 0)}レース` : 'まだ買っていません', cls(py - st)));
+  }
+}
+// 買い方・AIを変えた日（data.json の changes。日付は YYYYMMDD に直す）
+const chs = (d) => (d.changes || []).map((c) => ({...c, d8: String(c.date).replace(/-/g, '')}));
+const lastChange = (d) => { const c = chs(d); return c.length ? c[c.length - 1].d8 : null; };
+function changes(d) {
+  const box = document.getElementById('changes'), c = chs(d); box.textContent = ''; box.hidden = !c.length;
+  if (!c.length) return;
+  box.append(el('h2', {}, '買い方・AIの変更'));
+  for (const x of [...c].reverse()) {
+    const ul = el('ul', {class: 'chg'}); (x.items || []).forEach((i) => ul.append(el('li', {}, i)));
+    box.append(el('details', {class: 'box chgbox'}, el('summary', {}, el('b', {}, `${md(x.d8)}から`), `：${x.title}`), ul));
+  }
 }
 
 let sel = null;   // 馬券を出す日。日ごとの収支の行を押すと切り替わる（はじめは最新の日）
@@ -209,12 +229,15 @@ function races(d) {
 function days(d) {
   const tb = document.querySelector('#days tbody'); tb.textContent = '';
   if (!d.days.length) { tb.append(el('tr', {}, el('td', {colspan: 6, class: 'empty'}, 'まだ記録がありません。'))); return; }
-  for (const x of [...d.days].reverse()) {
+  const cs = chs(d), rev = [...d.days].reverse();
+  for (const c of cs) if (!d.days.some((x) => x.date >= c.d8)) tb.append(el('tr', {class: 'chgrow'}, el('td', {colspan: 6}, `▼ ${md(c.d8)}から${c.short || '変更'}（ここより下は変更前）`)));
+  for (const [i, x] of rev.entries()) {
     const n = x.payout - x.stake;
     const tr = el('tr', {class: x.date === sel ? 'sel' : ''}, el('td', {}, `${md(x.date)}（${wd(x.date)}）`), el('td', {}, `${x.races}`), el('td', {}, yen(x.stake)), el('td', {}, yen(x.payout)),
       el('td', {class: cls(n)}, sgn(n)), el('td', {}, x.done_stake ? Math.round(x.payout / x.done_stake * 100) + '%' : '—'));
     tr.addEventListener('click', () => { sel = x.date; races(d); days(d); chart(d); });
     tb.append(tr);
+    for (const c of cs) if (x.date >= c.d8 && (!rev[i + 1] || rev[i + 1].date < c.d8)) tb.append(el('tr', {class: 'chgrow'}, el('td', {colspan: 6}, `▲ ${md(c.d8)}から${c.short || '変更'}（上が変更後）`)));
   }
 }
 
@@ -241,6 +264,12 @@ function chart(d) {
   pts.forEach((p, i) => { if (i % every === 0 || i === pts.length - 1) add('text', {x: x(i), y: H - 6, 'text-anchor': 'middle', 'font-size': 13, fill: 'var(--muted)'}).textContent = p.date === 'start' ? '開始' : md(p.date); });
   add('path', {d: pts.map((p, i) => `${i ? 'L' : 'M'}${x(i)},${y(p.balance)}`).join(''), fill: 'none', stroke: 'var(--brown)', 'stroke-width': 3, 'stroke-linejoin': 'round', 'stroke-linecap': 'round'});
   pts.forEach((p, i) => add('circle', {cx: x(i), cy: y(p.balance), r: 4, fill: 'var(--brown)'}));
+  for (const c of chs(d)) {                  // 変えた日の点線（まだ変更後の日が無ければ右端）
+    const i = pts.findIndex((p) => p.date !== 'start' && p.date >= c.d8);
+    const X = i < 0 ? W - R - 2 : i > 0 ? (x(i - 1) + x(i)) / 2 : x(i), right = X > W * .7;
+    add('line', {x1: X, x2: X, y1: T, y2: H - B, stroke: 'var(--muted)', 'stroke-dasharray': '5 4'});
+    add('text', {x: right ? X - 5 : X + 5, y: T + 12, 'text-anchor': right ? 'end' : 'start', 'font-size': 12, fill: 'var(--muted)'}).textContent = `${md(c.d8)}〜 ${c.short || '変更'}`;
+  }
   const last = pts[pts.length - 1];
   add('text', {x: x(pts.length - 1), y: y(last.balance) - 10, 'text-anchor': 'end', 'font-size': 14, 'font-weight': 700, fill: 'var(--fg)'}).textContent = yen(last.balance);
   box.append(svg);
@@ -255,7 +284,7 @@ function cash(d) {
 fetch('data.json', {cache: 'no-store'}).then((r) => r.json()).then((d) => {
   document.getElementById('since').textContent = `${+d.since.slice(4, 6)}月${+d.since.slice(6, 8)}日`;
   document.getElementById('updated').textContent = d.updated ? `・${+d.updated.slice(5, 7)}/${+d.updated.slice(8, 10)} ${d.updated.slice(11)} 更新` : '';
-  summary(d); races(d); days(d); cash(d); chart(d);
+  summary(d); changes(d); races(d); days(d); cash(d); chart(d);
   let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => chart(d), 200); });
 }).catch(() => { document.getElementById('races').textContent = '記録を読み込めませんでした。少し待ってから開き直してください。'; });
 </script>
