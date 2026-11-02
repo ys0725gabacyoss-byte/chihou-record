@@ -284,7 +284,7 @@ function cash(d) {
 fetch('data.json', {cache: 'no-store'}).then((r) => r.json()).then((d) => {
   document.getElementById('since').textContent = `${+d.since.slice(4, 6)}月${+d.since.slice(6, 8)}日`;
   document.getElementById('updated').textContent = d.updated ? `・${+d.updated.slice(5, 7)}/${+d.updated.slice(8, 10)} ${d.updated.slice(11)} 更新` : '';
-  summary(d); changes(d); races(d); days(d); cash(d); chart(d);
+  summary(d); races(d); days(d); cash(d); chart(d);
   let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => chart(d), 200); });
 }).catch(() => { document.getElementById('races').textContent = '記録を読み込めませんでした。少し待ってから開き直してください。'; });
 </script>
